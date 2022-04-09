@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers"
+import { ethers } from "ethers";
+require('dotenv').config();
 import abi from "./utils/WavePortal.json";
 import "./App.css";
 
@@ -8,7 +9,7 @@ const App = () => {
   * Just a state variable we use to store our user's public wallet.
   */
   const [currentAccount, setCurrentAccount] = useState("");
-  const contractAddress= "0x84B3E15Fc8e40c8Add8De7F6a381AA7f74fBc3C4";
+  const contractAddress= process.env.CONTRACT_ADDRESS;
   const contractABI = abi.abi;
 
   const checkIfWalletIsConnected = async () => {
