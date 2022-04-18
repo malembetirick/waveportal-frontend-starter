@@ -116,15 +116,14 @@ const App = () => {
       if (ethereum) {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
-        const wavePortalContract = new ethers.Contract("0x336F639aBE72C47BEba9B295aa652E3937A6FC61", contractABI, signer);
-        console.log('go');
+        const wavePortalContract = new ethers.Contract(data.contractAddress, contractABI, signer);
         let count = await wavePortalContract.getTotalWaves();
         console.log("Retrieved total wave count...", count.toNumber());
 
         /*
         * Execute the actual wave from your smart contract
         */
-        const waveTxn = await wavePortalContract.wave(data.message);
+        const waveTxn = await wavePortalContract.wave(data.message, { gasLimit: 300000 });
         console.log("Mining...", waveTxn.hash);
 
         await waveTxn.wait();
@@ -168,8 +167,41 @@ const App = () => {
 
   useEffect(async () => {
     console.log(formData.contractAddress, currentAccount);
-    if (currentAccount) await getAllWaves("0x336F639aBE72C47BEba9B295aa652E3937A6FC61");
-  }, [currentAccount]);
+    if (currentAccount && formData.contractAddress) await getAllWaves(formData.contractAddress);
+  }, [currentAccount, formData.contractAddress]);
+
+  /**
+ * Listen in for emitter events!
+ */
+  useEffect(() => {
+    let wavePortalContract;
+  
+    const onNewWave = (from, timestamp, message) => {
+      console.log("NewWave", from, timestamp, message);
+      setAllWaves(prevState => [
+        ...prevState,
+        {
+          address: from,
+          timestamp: new Date(timestamp * 1000),
+          message: message,
+        },
+      ]);
+    };
+  
+    if (window.ethereum) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+  
+      wavePortalContract = new ethers.Contract(formData.contractAddress, contractABI, signer);
+      wavePortalContract.on("NewWave", onNewWave);
+    }
+  
+    return () => {
+      if (wavePortalContract) {
+        wavePortalContract.off("NewWave", onNewWave);
+      }
+    };
+  }, [formData.contractAddress]);
 
   return (
     <div className="mainContainer">
@@ -182,7 +214,7 @@ const App = () => {
           I am rick and i'm happy to learn web3 concepts on buildspace.so
         </div>
         <form onSubmit={handleSubmit}>
-          <input type="text" name="contractAddress" placeholder="Your eth address" defaultValue={formData.contractAddress} onPaste={handleChangeOnPaste} required/>
+          <input type="text" name="contractAddress" placeholder="Your eth address" value={formData.contractAddress} onChange={handleChange} onPaste={handleChangeOnPaste} required/>
           <textarea name="message" value={formData.message} placeholder="Your message" onInput={handleChange} required/>
           <input type="submit" className="waveButton" value="Wave at Me" />
         </form>
